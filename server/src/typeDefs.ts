@@ -1,6 +1,6 @@
 import { gql } from "apollo-server-express";
 // Type-graphql
-import { Field, ObjectType, Query } from "type-graphql";
+import { Field, ObjectType } from "type-graphql";
 @ObjectType()
 class User {
   @Field((type) => String)

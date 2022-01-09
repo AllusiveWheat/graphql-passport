@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon dist/index.js",
+    "start": "tsc && nodemon dist/index.js",
     "watch": "tsc -w",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -13,6 +14,7 @@
   "license": "ISC",
   "dependencies": {
     "apollo-server-express": "^3.6.1",
+    "argon2": "^0.28.3",
     "axios": "^0.24.0",
     "class-validator": "^0.13.2",
     "cors": "^2.8.5",
@@ -23,8 +25,12 @@
     "graphql-passport": "^0.6.4",
     "nodemon": "^2.0.15",
     "passport": "^0.5.2",
+    "passport-google-strategy": "^1.0.3",
     "passport-spotify": "^2.0.0",
     "type-graphql": "^1.1.1",
+    "pg": "^8.7.1",
+    "reflect-metadata": "^0.1.13",
+    "typeorm": "^0.2.41",
     "typescript": "^4.5.4",
     "uuid": "^8.3.2"
   },

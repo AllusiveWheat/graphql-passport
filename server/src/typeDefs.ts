@@ -19,6 +19,23 @@ class Query {
   @Field((type) => User)
   currentUser(parent, args, context) {
     return context.getUser();
+const typeDefs = gql`
+  type User {
+    id: ID
+    firstName: String
+    lastName: String
+    email: String
+    spotifyId: String
+    refreshToken: String
+  }
+  type Query {
+    currentUser: User
+  }
+  type Mutation {
+    logout: Boolean
+  }
+  type AuthPayload {
+    user: User
   }
 }
 

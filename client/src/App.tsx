@@ -1,4 +1,3 @@
-import { useQuery, Query } from "@apollo/react-hooks";
 import SpotifyLogin from "./SpotifyLogin";
 import PasswordSignUp from "./PasswordSignUp";
 import LoginWithCredentials from "./LoginWithCredentials";

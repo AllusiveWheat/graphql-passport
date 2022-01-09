@@ -1,14 +1,20 @@
 import { v4 as uuid } from "uuid";
-
+import { User } from "./entity/User";
+import argon2 from "argon2";
 const resolvers = {
   Query: {
     currentUser: (parent, args, context) => context.getUser(),
   },
   Mutation: {
     logout: (parent, args, context) => context.logout(),
-    register: (parent, { firstName, lastName, email, password }, context) => {
-      const existingUsers = context.User.getUsers();
-      const userWithEmailAlreadyExists = !!existingUsers.find(
+    register: async (
+      parent,
+      { firstName, lastName, email, password },
+      context
+    ) => {
+      const hashedPassword = await argon2.hash(password);
+      const existingUsers = context.User.find();
+      const userWithEmailAlreadyExists = existingUsers.find(
         (user) => user.email === email
       );
       if (userWithEmailAlreadyExists) {
@@ -19,16 +25,15 @@ const resolvers = {
         firstName,
         lastName,
         email,
-        password,
+        hashedPassword,
       };
-      context.User.addUser(newUser);
-      context.login(newUser);
-      return { user: newUser };
+      return context.User.create(newUser).save();
     },
     login: async (parent, { email, password }, context) => {
+      const decrptedPassword = await argon2.hash(password);
       const { user } = await context.authenticate("graphql-local", {
         email,
-        password,
+        decrptedPassword,
       });
       await context.login(user);
       return { user };

@@ -5,31 +5,32 @@ import { v4 as uuid } from "uuid";
 const SESSION_SECRECT = process.env.SESSION_SECRECT || "bad secret";
 import passport from "passport";
 const SpotifyStrategy = require("passport-spotify").Strategy;
-import User from "./User";
 import dotenv from "dotenv-safe";
 import cors from "cors";
-
-dotenv.config();
-import typeDefs from "./typeDefs";
-export interface User {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-}
-import resolvers from "./resolvers";
+import CustomGoogleStrategy from "passport-google-strategy";
 import { ApolloServer } from "apollo-server-express";
 import { buildContext, GraphQLLocalStrategy } from "graphql-passport";
+import reflectMetadata from "reflect-metadata";
+import { createConnection } from "typeorm";
+import { User } from "./entity/User";
+dotenv.config();
+import typeDefs from "./typeDefs";
+import resolvers from "./resolvers";
 async function load(): Promise<void> {
+  const connection = await createConnection({
+    type: "postgres",
+    database: "spotify",
+    username: "postgres",
+    password: "1",
+    logging: true,
+    synchronize: true,
+    entities: [User],
+  });
+
   passport.serializeUser((user, done) => {
     done(null, user.id);
   });
-  passport.deserializeUser((id, done) => {
-    const users = User.getUsers();
-    const matchingUser = users.find((user) => user.id === id);
-    done(null, matchingUser);
-  });
+  passport.deserializeUser(async (id: string, done) => {});
   const app = express();
   const corsOptions = {
     origin: "http://localhost:3000",
@@ -60,33 +61,68 @@ async function load(): Promise<void> {
         callbackURL: "http://localhost:4000/auth/spotify/callback",
       },
       async (accessToken, refreshToken, profile, done) => {
-        const existingUsers = User.getUsers();
-        const userWithEmailAlreadyExists = !!existingUsers.find(
+        const existingUsers = await User.find();
+        const userWithEmailAlreadyExists = existingUsers.find(
           (user) => user.email === profile.email
         );
-        // if (userWithEmailAlreadyExists) {
-        //   throw new Error("User with email already exists");
-        // }
+        if (userWithEmailAlreadyExists) {
+          throw new Error("User with email already exists");
+        }
         const newUser = {
           id: uuid(),
-          oauthId: profile.id,
+          spotifyId: profile.id,
           firstName: profile.displayName,
           lastName: profile.displayName,
           email: profile.email,
+          accessToken: accessToken,
+          refreshToken: refreshToken,
         };
-        User.addUser(newUser);
-        done(null, newUser);
+        const user = await User.create(newUser).save();
+        done(null, user);
       }
     )
   );
   passport.use(
-    new GraphQLLocalStrategy((email, password, done) => {
-      const users = User.getUsers();
-      const matchingUser = users.find(
-        (user) => email === user.email && password === user.password
-      );
-      const error = matchingUser ? null : new Error("no matching user");
-      done(error, matchingUser);
+    new CustomGoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: "http://localhost:4000/auth/google/callback",
+      },
+      async (accessToken, refreshToken, profile, done) => {
+        const existingUsers = await User.find();
+        const userWithEmailAlreadyExists = existingUsers.find(
+          (user) => user.email === profile.email
+        );
+        if (userWithEmailAlreadyExists) {
+          throw new Error("User with email already exists");
+        }
+        const newUser = {
+          id: uuid(),
+          firstName: profile.displayName,
+          lastName: profile.displayName,
+          email: profile.email,
+        };
+        const user = await User.create(newUser).save();
+        done(null, user);
+      }
+    )
+  );
+  passport.use(
+    new GraphQLLocalStrategy(async (email, password, done) => {
+      const users = await User.find({
+        where: {
+          email,
+          password,
+        },
+      });
+      if (users.length > 0) {
+        done(null, users[0]);
+      } else {
+        const error = new Error("Invalid credentials");
+        error.name = "AuthenticationError";
+        done(error, false);
+      }
     })
   );
   app.get("/auth/spotify", passport.authenticate("spotify"));
@@ -97,9 +133,18 @@ async function load(): Promise<void> {
       failureRedirect: "http://localhost:4000/graphql",
     })
   );
+
+  app.get("/auth/google", passport.authenticate("google"));
+  app.get(
+    "/auth/google/callback",
+    passport.authenticate("google", {
+      successRedirect: "http://localhost:3000",
+      failureRedirect: "http://localhost:4000/graphql",
+    })
+  );
+
   await server.start();
   server.applyMiddleware({ app, cors: false });
-
   app.listen({ port: PORT }, () => {
     console.log(`🚀 Server ready at http://localhost:${PORT}`);
   });

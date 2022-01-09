@@ -5,27 +5,81 @@ import {
 } from "./generated/graphql";
 
 const PasswordSignUp = () => {
+  const [user, setUser] = React.useState({
+    email: "",
+    password: "",
+    firstName: "",
+    lastName: "",
+  });
   const [signUp] = useRegisterMutation({
-    update: (cache, { data }) => {
+    update: (cache, { data: { register } }) => {
       cache.writeQuery({
         query: CurrentUserQueryDocument,
-        data: {
-          currentUser: data.register.user,
-        },
+        data: { currentUser: register },
       });
     },
   });
-
-  const user = {
-    firstName: "G",
-    lastName: "G",
-    email: "jGen@barber.com",
-    password: "qwerty",
-  };
+  console.log(user);
   return (
-    <button onClick={() => signUp({ variables: user })}>
-      Signup as Jen Barber
-    </button>
+    // Sign up with credentials
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        signUp({
+          variables: {
+            email: user.email,
+            password: user.password,
+            firstName: user.firstName,
+            lastName: user.lastName,
+          },
+        });
+      }}
+    >
+      <input
+        type="text"
+        name="firstName"
+        placeholder="First Name"
+        value={user.firstName}
+        onChange={(e) => setUser({ ...user, firstName: e.target.value })}
+      />
+      <input
+        type="text"
+        name="lastName"
+        placeholder="Last Name"
+        value={user.lastName}
+        onChange={(e) => setUser({ ...user, lastName: e.target.value })}
+      />
+      <input
+        type="text"
+        name="email"
+        placeholder="Email"
+        value={user.email}
+        onChange={(e) => setUser({ ...user, email: e.target.value })}
+      />
+      <input
+        type="password"
+        name="password"
+        placeholder="Password"
+        value={user.password}
+        onChange={(e) => setUser({ ...user, password: e.target.value })}
+      />
+      <button
+        type="submit"
+        onSubmit={(e) => {
+          e.preventDefault();
+          signUp({
+            variables: {
+              email: user.email,
+              password: user.password,
+              firstName: user.firstName,
+              lastName: user.lastName,
+            },
+          });
+        }}
+      >
+        Sign Up
+      </button>
+    </form>
   );
 };
 

@@ -5,6 +5,8 @@ const typeDefs = gql`
     firstName: String
     lastName: String
     email: String
+    spotifyId: String
+    refreshToken: String
   }
   type Query {
     currentUser: User

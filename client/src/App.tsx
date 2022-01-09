@@ -1,12 +1,19 @@
-import { useQuery } from "@apollo/react-hooks";
-import { CURRENT_USER_QUERY } from "./queries";
+import { useQuery, Query } from "@apollo/react-hooks";
+import SpotifyLogin from "./SpotifyLogin";
+import PasswordSignUp from "./PasswordSignUp";
+import LoginWithCredentials from "./LoginWithCredentials";
+import LogoutButton from "./LogoutButton";
+import { useCurrentUserQueryQuery } from "./generated/graphql";
 const App = () => {
-  const { loading, error, data } = useQuery(CURRENT_USER_QUERY);
+  const { loading, error, data } = useCurrentUserQueryQuery();
   if (loading) return <div>Loading</div>;
   if (error) return <div>Error: {JSON.stringify(error)}</div>;
+
   const isLoggedIn = !!data.currentUser;
+
   if (isLoggedIn) {
     const { id, firstName, lastName, email } = data.currentUser;
+
     return (
       <>
         {id}
@@ -14,10 +21,20 @@ const App = () => {
         {firstName} {lastName}
         <br />
         {email}
+        <br />
+        <LogoutButton />
       </>
     );
   }
+
   // SIGNUP AND LOGIN GO HERE
-  return <div>User is not logged in</div>;
+  return (
+    <div>
+      <SpotifyLogin />
+      <PasswordSignUp />
+      <LoginWithCredentials />
+    </div>
+  );
 };
+
 export default App;

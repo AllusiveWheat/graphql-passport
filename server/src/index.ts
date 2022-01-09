@@ -64,9 +64,9 @@ async function load(): Promise<void> {
         const userWithEmailAlreadyExists = !!existingUsers.find(
           (user) => user.email === profile.email
         );
-        if (userWithEmailAlreadyExists) {
-          throw new Error("User with email already exists");
-        }
+        // if (userWithEmailAlreadyExists) {
+        //   throw new Error("User with email already exists");
+        // }
         const newUser = {
           id: uuid(),
           oauthId: profile.id,
@@ -93,7 +93,7 @@ async function load(): Promise<void> {
   app.get(
     "/auth/spotify/callback",
     passport.authenticate("spotify", {
-      successRedirect: "http://localhost:4000/graphql",
+      successRedirect: "http://localhost:3000",
       failureRedirect: "http://localhost:4000/graphql",
     })
   );

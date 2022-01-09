@@ -2,6 +2,8 @@ import express from "express";
 const PORT = 4000;
 import session from "express-session";
 import { v4 as uuid } from "uuid";
+import { buildSchema } from "type-graphql";
+
 const SESSION_SECRECT = process.env.SESSION_SECRECT || "bad secret";
 import passport from "passport";
 const SpotifyStrategy = require("passport-spotify").Strategy;
@@ -10,18 +12,17 @@ import cors from "cors";
 import CustomGoogleStrategy from "passport-google-strategy";
 import { ApolloServer } from "apollo-server-express";
 import { buildContext, GraphQLLocalStrategy } from "graphql-passport";
-import reflectMetadata from "reflect-metadata";
+import "reflect-metadata";
 import { createConnection } from "typeorm";
-import { User } from "./entity/User";
-dotenv.config();
-import typeDefs from "./typeDefs";
-import resolvers from "./resolvers";
+import { User } from "./entities/User";
+dotenv.config({ allowEmptyValues: true });
+import { UserResolver } from "./resolvers/user";
 async function load(): Promise<void> {
   const connection = await createConnection({
     type: "postgres",
-    database: "spotify",
+    database: process.env.DB_NAME || "spotify",
     username: "postgres",
-    password: "1",
+    password: process.env.DB_PASSWORD,
     logging: true,
     synchronize: true,
     entities: [User],
@@ -33,7 +34,8 @@ async function load(): Promise<void> {
   passport.deserializeUser(async (id: string, done) => {});
   const app = express();
   const corsOptions = {
-    origin: "http://localhost:3000",
+    origin: "*",
+
     credentials: true,
   };
   app.use(cors(corsOptions));
@@ -49,8 +51,9 @@ async function load(): Promise<void> {
   app.use(passport.initialize());
   app.use(passport.session());
   const server = new ApolloServer({
-    typeDefs,
-    resolvers,
+    schema: await buildSchema({
+      resolvers: [UserResolver],
+    }),
     context: ({ req, res }) => buildContext({ req, res, User }),
   });
   passport.use(

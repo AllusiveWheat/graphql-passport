@@ -10,11 +10,9 @@ mutation Register(
     email: $email
     password: $password
   ) {
-    user {
-      id
-      firstName
-      lastName
-      email
-    }
+    id
+    firstName
+    lastName
+    email
   }
 }

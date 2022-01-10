@@ -7,12 +7,10 @@ const App = () => {
   const { loading, error, data } = useCurrentUserQueryQuery();
   if (loading) return <div>Loading</div>;
   if (error) return <div>Error: {JSON.stringify(error)}</div>;
-
   const isLoggedIn = !!data.currentUser;
 
   if (isLoggedIn) {
     const { id, firstName, lastName, email } = data.currentUser;
-
     return (
       <>
         {id}

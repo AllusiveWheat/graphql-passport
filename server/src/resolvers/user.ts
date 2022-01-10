@@ -8,6 +8,7 @@ import {
 } from "type-graphql";
 import agrgon2 from "argon2";
 import { User } from "../entities/User";
+import { v4 as uuid } from "uuid";
 @Resolver(User)
 export class UserResolver {
   @FieldResolver(() => String)
@@ -18,14 +19,17 @@ export class UserResolver {
     @Ctx() { req, res }
   ) {
     const user = await User.findOne({ where: { email } });
+    if (user) {
+      user.id = uuid(); // This is a hack to get around the fact that the userId is not being set in the session
+    }
     if (!user) {
-      throw new Error("No user found");
+      throw new Error("User does not exist");
     }
     const valid = await agrgon2.verify(user.password, password);
     if (!valid) {
-      throw new Error("Incorrect password");
+      throw new Error("Invalid password");
     }
-    req.session!.userId = user.id;
+    req.session.userId = user.id;
     return { user };
   }
 
@@ -43,13 +47,12 @@ export class UserResolver {
       })
     );
   }
-  @Query(() => User)
-  async currentUser(@Ctx() { req }: any) {
-    const userId = req.session!.userId;
-    if (!userId) {
+  @Query(() => User, { nullable: true })
+  currentUser(@Ctx() { req }: any) {
+    if (!req.session.userId) {
       return null;
     }
-    return await User.findOne(userId);
+    return User.findOne(req.session.userId);
   }
 
   @Mutation(() => User)
@@ -58,7 +61,7 @@ export class UserResolver {
     @Arg("lastName") lastName: string,
     @Arg("email") email: string,
     @Arg("password") password: string,
-    @Ctx() { req, res }
+    @Ctx() { req }: any
   ) {
     const hashedPassword = await agrgon2.hash(password);
     const existingUsers = await User.find();
@@ -68,13 +71,14 @@ export class UserResolver {
     if (userWithEmailAlreadyExists) {
       throw new Error("User with email already exists");
     }
-
     const newUser = {
-      firstName,
-      lastName,
-      email,
+      id: uuid(),
+      firstName: firstName,
+      lastName: lastName,
+      email: email,
       password: hashedPassword,
     };
+    newUser.id = req.session.userId;
     const user = await User.create(newUser).save();
     return { user };
   }

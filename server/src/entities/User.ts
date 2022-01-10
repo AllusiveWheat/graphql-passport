@@ -8,7 +8,7 @@ export class User extends BaseEntity {
   @Field()
   id: string;
 
-  @Column({ unique: true })
+  @Column({})
   @Field(() => String)
   firstName: string;
 

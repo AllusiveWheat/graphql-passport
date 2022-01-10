@@ -3,7 +3,6 @@ const PORT = 4000;
 import session from "express-session";
 import { v4 as uuid } from "uuid";
 import { buildSchema } from "type-graphql";
-
 const SESSION_SECRECT = process.env.SESSION_SECRECT || "bad secret";
 import passport from "passport";
 const SpotifyStrategy = require("passport-spotify").Strategy;
@@ -31,23 +30,30 @@ async function load(): Promise<void> {
   passport.serializeUser((user, done) => {
     done(null, user.id);
   });
-  passport.deserializeUser(async (id: string, done) => {});
+  passport.deserializeUser(async (id: string, done) => {
+    const user = await User.findOne(id);
+    done(null, user);
+  });
   const app = express();
   const corsOptions = {
     origin: "*",
-
     credentials: true,
   };
   app.use(cors(corsOptions));
   app.use(
     session({
       genid: (req) => uuid(),
+      name: "qid",
       secret: SESSION_SECRECT,
+      cookie: {
+        maxAge: 1000 * 60 * 60 * 24 * 7,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+      },
       resave: false,
       saveUninitialized: false,
     })
   );
-
   app.use(passport.initialize());
   app.use(passport.session());
   const server = new ApolloServer({
@@ -62,52 +68,30 @@ async function load(): Promise<void> {
         clientID: process.env.SPOTIFY_CLIENT_ID,
         clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
         callbackURL: "http://localhost:4000/auth/spotify/callback",
+        scope: ["user-read-email", "user-read-private"],
       },
       async (accessToken, refreshToken, profile, done) => {
         const existingUsers = await User.find();
-        const userWithEmailAlreadyExists = existingUsers.find(
-          (user) => user.email === profile.email
+
+        const existingUser = existingUsers.find(
+          (user) => user.spotifyId === profile.id
         );
-        if (userWithEmailAlreadyExists) {
-          throw new Error("User with email already exists");
+        if (existingUser) {
+          existingUser.accessToken = accessToken;
+          existingUser.refreshToken = refreshToken;
+          await existingUser.save();
+          return done(null, existingUser);
+        } else {
+          const newUser = new User();
+          newUser.spotifyId = profile.id;
+          newUser.accessToken = accessToken;
+          newUser.refreshToken = refreshToken;
+          newUser.firstName = profile.displayName;
+          newUser.lastName = profile.displayName;
+          newUser.email = profile.emails[0].value;
+          await newUser.save();
+          return done(null, newUser);
         }
-        const newUser = {
-          id: uuid(),
-          spotifyId: profile.id,
-          firstName: profile.displayName,
-          lastName: profile.displayName,
-          email: profile.email,
-          accessToken: accessToken,
-          refreshToken: refreshToken,
-        };
-        const user = await User.create(newUser).save();
-        done(null, user);
-      }
-    )
-  );
-  passport.use(
-    new CustomGoogleStrategy(
-      {
-        clientID: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: "http://localhost:4000/auth/google/callback",
-      },
-      async (accessToken, refreshToken, profile, done) => {
-        const existingUsers = await User.find();
-        const userWithEmailAlreadyExists = existingUsers.find(
-          (user) => user.email === profile.email
-        );
-        if (userWithEmailAlreadyExists) {
-          throw new Error("User with email already exists");
-        }
-        const newUser = {
-          id: uuid(),
-          firstName: profile.displayName,
-          lastName: profile.displayName,
-          email: profile.email,
-        };
-        const user = await User.create(newUser).save();
-        done(null, user);
       }
     )
   );

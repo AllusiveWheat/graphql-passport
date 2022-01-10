@@ -19,6 +19,7 @@ const PasswordSignUp = () => {
       });
     },
   });
+  console.log(signUp);
   console.log(user);
   return (
     // Sign up with credentials

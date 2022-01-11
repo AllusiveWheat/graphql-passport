@@ -1,12 +1,9 @@
-import {
-  useLogoutMutation,
-  CurrentUserQueryDocument,
-} from "./generated/graphql";
+import { useLogoutMutation, CurrentUserDocument } from "./generated/graphql";
 const LogoutButton = () => {
   const [logout] = useLogoutMutation({
     update: (cache) =>
       cache.writeQuery({
-        query: CurrentUserQueryDocument,
+        query: CurrentUserDocument,
         data: { currentUser: null },
       }),
   });

@@ -18,19 +18,23 @@ export class UserResolver {
     @Arg("password") password: string,
     @Ctx() { req, res }
   ) {
-    const user = await User.findOne({ where: { email } });
-    if (user) {
-      user.id = uuid(); // This is a hack to get around the fact that the userId is not being set in the session
+    let user;
+    try {
+      user = await User.findOne({ where: { email: email } });
+      console.log(user);
+    } catch (err) {
+      throw err;
     }
     if (!user) {
-      throw new Error("User does not exist");
+      throw new Error("User not found");
     }
     const valid = await agrgon2.verify(user.password, password);
     if (!valid) {
       throw new Error("Invalid password");
     }
     req.session.userId = user.id;
-    return { user };
+    // console.log(res.body);
+    return user;
   }
 
   @Mutation(() => Boolean)
@@ -63,23 +67,22 @@ export class UserResolver {
     @Arg("password") password: string,
     @Ctx() { req }: any
   ) {
-    const hashedPassword = await agrgon2.hash(password);
-    const existingUsers = await User.find();
-    const userWithEmailAlreadyExists = existingUsers.find(
-      (user) => user.email === email
-    );
-    if (userWithEmailAlreadyExists) {
-      throw new Error("User with email already exists");
+    let user;
+    try {
+      user = await User.create({
+        id: uuid(),
+        firstName,
+        lastName,
+        email,
+        password: await agrgon2.hash(password),
+      }).save();
+    } catch (err) {
+      if (err.code === "23505") {
+        throw new Error("User already exists");
+      }
+      throw err;
     }
-    const newUser = {
-      id: uuid(),
-      firstName: firstName,
-      lastName: lastName,
-      email: email,
-      password: hashedPassword,
-    };
-    newUser.id = req.session.userId;
-    const user = await User.create(newUser).save();
-    return { user };
+    req.session.userId = user.id;
+    return user;
   }
 }

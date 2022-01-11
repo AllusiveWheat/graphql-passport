@@ -1,8 +1,5 @@
 import React, { useState } from "react";
-import {
-  useLoginMutation,
-  CurrentUserQueryDocument,
-} from "./generated/graphql";
+import { useLoginMutation, CurrentUserDocument } from "./generated/graphql";
 
 const LoginWithCredentials = () => {
   const [user, setUser] = useState({
@@ -12,7 +9,7 @@ const LoginWithCredentials = () => {
   const [login] = useLoginMutation({
     update: (cache, { data: { login } }) =>
       cache.writeQuery({
-        query: CurrentUserQueryDocument,
+        query: CurrentUserDocument,
         data: { currentUser: login },
       }),
   });

@@ -42,7 +42,6 @@ async function load(): Promise<void> {
   app.use(cors(corsOptions));
   app.use(
     session({
-      genid: (req) => uuid(),
       name: "qid",
       secret: SESSION_SECRECT,
       cookie: {
@@ -76,7 +75,11 @@ async function load(): Promise<void> {
             oauthId: profile.id,
           },
         });
+
         if (user) {
+          user.accessToken = accessToken;
+          user.refreshToken = refreshToken;
+          await user.save();
           done(null, user);
         } else {
           const newUser = await User.create({
@@ -85,7 +88,9 @@ async function load(): Promise<void> {
             firstName: profile.name.givenName,
             lastName: profile.name.familyName,
             email: profile.emails[0].value,
-          });
+            accessToken: accessToken,
+            refreshToken: refreshToken,
+          }).save();
           done(null, newUser);
         }
       }
@@ -105,6 +110,7 @@ async function load(): Promise<void> {
         const existingUser = existingUsers.find(
           (user) => user.oauthId === profile.id
         );
+
         if (existingUser) {
           existingUser.accessToken = accessToken;
           existingUser.refreshToken = refreshToken;
@@ -119,7 +125,8 @@ async function load(): Promise<void> {
           newUser.lastName = profile.displayName;
           newUser.email = profile.emails[0].value;
           await newUser.save();
-          return done(null, newUser);
+          // Set the user in the session
+          done(null, newUser);
         }
       }
     )
@@ -165,4 +172,4 @@ async function load(): Promise<void> {
     console.log(`🚀 Server ready at http://localhost:${PORT}`);
   });
 }
-load();
+load().catch((e) => console.error(e));

@@ -49,9 +49,9 @@ export type User = {
   id: Scalars['String'];
   lastName: Scalars['String'];
   login: Scalars['String'];
+  oauthId: Scalars['String'];
   password: Scalars['String'];
   refreshToken: Scalars['String'];
-  spotifyId: Scalars['String'];
 };
 
 
@@ -83,10 +83,10 @@ export type RegisterMutationVariables = Exact<{
 
 export type RegisterMutation = { __typename?: 'Mutation', register: { __typename?: 'User', id: string, firstName: string, lastName: string, email: string, password: string } };
 
-export type CurrentUserQueryQueryVariables = Exact<{ [key: string]: never; }>;
+export type CurrentUserQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type CurrentUserQueryQuery = { __typename?: 'Query', currentUser?: { __typename?: 'User', id: string, firstName: string, lastName: string, email: string } | null | undefined };
+export type CurrentUserQuery = { __typename?: 'Query', currentUser?: { __typename?: 'User', id: string, firstName: string, lastName: string, email: string } | null | undefined };
 
 
 export const LoginDocument = gql`
@@ -201,8 +201,8 @@ export function useRegisterMutation(baseOptions?: Apollo.MutationHookOptions<Reg
 export type RegisterMutationHookResult = ReturnType<typeof useRegisterMutation>;
 export type RegisterMutationResult = Apollo.MutationResult<RegisterMutation>;
 export type RegisterMutationOptions = Apollo.BaseMutationOptions<RegisterMutation, RegisterMutationVariables>;
-export const CurrentUserQueryDocument = gql`
-    query CurrentUserQuery {
+export const CurrentUserDocument = gql`
+    query CurrentUser {
   currentUser {
     id
     firstName
@@ -213,28 +213,28 @@ export const CurrentUserQueryDocument = gql`
     `;
 
 /**
- * __useCurrentUserQueryQuery__
+ * __useCurrentUserQuery__
  *
- * To run a query within a React component, call `useCurrentUserQueryQuery` and pass it any options that fit your needs.
- * When your component renders, `useCurrentUserQueryQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * To run a query within a React component, call `useCurrentUserQuery` and pass it any options that fit your needs.
+ * When your component renders, `useCurrentUserQuery` returns an object from Apollo Client that contains loading, error, and data properties
  * you can use to render your UI.
  *
  * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
  *
  * @example
- * const { data, loading, error } = useCurrentUserQueryQuery({
+ * const { data, loading, error } = useCurrentUserQuery({
  *   variables: {
  *   },
  * });
  */
-export function useCurrentUserQueryQuery(baseOptions?: Apollo.QueryHookOptions<CurrentUserQueryQuery, CurrentUserQueryQueryVariables>) {
+export function useCurrentUserQuery(baseOptions?: Apollo.QueryHookOptions<CurrentUserQuery, CurrentUserQueryVariables>) {
         const options = {...defaultOptions, ...baseOptions}
-        return Apollo.useQuery<CurrentUserQueryQuery, CurrentUserQueryQueryVariables>(CurrentUserQueryDocument, options);
+        return Apollo.useQuery<CurrentUserQuery, CurrentUserQueryVariables>(CurrentUserDocument, options);
       }
-export function useCurrentUserQueryLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<CurrentUserQueryQuery, CurrentUserQueryQueryVariables>) {
+export function useCurrentUserLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<CurrentUserQuery, CurrentUserQueryVariables>) {
           const options = {...defaultOptions, ...baseOptions}
-          return Apollo.useLazyQuery<CurrentUserQueryQuery, CurrentUserQueryQueryVariables>(CurrentUserQueryDocument, options);
+          return Apollo.useLazyQuery<CurrentUserQuery, CurrentUserQueryVariables>(CurrentUserDocument, options);
         }
-export type CurrentUserQueryQueryHookResult = ReturnType<typeof useCurrentUserQueryQuery>;
-export type CurrentUserQueryLazyQueryHookResult = ReturnType<typeof useCurrentUserQueryLazyQuery>;
-export type CurrentUserQueryQueryResult = Apollo.QueryResult<CurrentUserQueryQuery, CurrentUserQueryQueryVariables>;
+export type CurrentUserQueryHookResult = ReturnType<typeof useCurrentUserQuery>;
+export type CurrentUserLazyQueryHookResult = ReturnType<typeof useCurrentUserLazyQuery>;
+export type CurrentUserQueryResult = Apollo.QueryResult<CurrentUserQuery, CurrentUserQueryVariables>;

@@ -1,8 +1,5 @@
 import React from "react";
-import {
-  useRegisterMutation,
-  CurrentUserQueryDocument,
-} from "./generated/graphql";
+import { useRegisterMutation, CurrentUserDocument } from "./generated/graphql";
 
 const PasswordSignUp = () => {
   const [user, setUser] = React.useState({
@@ -14,12 +11,11 @@ const PasswordSignUp = () => {
   const [signUp] = useRegisterMutation({
     update: (cache, { data: { register } }) => {
       cache.writeQuery({
-        query: CurrentUserQueryDocument,
+        query: CurrentUserDocument,
         data: { currentUser: register },
       });
     },
   });
-  console.log(signUp);
   console.log(user);
   return (
     // Sign up with credentials

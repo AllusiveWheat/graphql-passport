@@ -2,10 +2,10 @@ import SpotifyLogin from "./SpotifyLogin";
 import PasswordSignUp from "./PasswordSignUp";
 import LoginWithCredentials from "./LoginWithCredentials";
 import LogoutButton from "./LogoutButton";
-import { useCurrentUserQueryQuery } from "./generated/graphql";
+import { useCurrentUserQuery } from "./generated/graphql";
 import GoogleAuth from "./GoogleAuth";
 const App = () => {
-  const { loading, error, data } = useCurrentUserQueryQuery();
+  const { data, loading, error } = useCurrentUserQuery();
   if (loading) return <div>Loading</div>;
   if (error) return <div>Error: {JSON.stringify(error)}</div>;
   const isLoggedIn = !!data.currentUser;
@@ -32,6 +32,7 @@ const App = () => {
       <GoogleAuth />
       <PasswordSignUp />
       <LoginWithCredentials />
+      <LogoutButton />
     </div>
   );
 };

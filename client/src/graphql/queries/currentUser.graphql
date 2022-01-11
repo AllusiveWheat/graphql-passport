@@ -1,4 +1,4 @@
-query CurrentUserQuery {
+query CurrentUser {
   currentUser {
     id
     firstName

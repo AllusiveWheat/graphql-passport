@@ -3,6 +3,7 @@ import PasswordSignUp from "./PasswordSignUp";
 import LoginWithCredentials from "./LoginWithCredentials";
 import LogoutButton from "./LogoutButton";
 import { useCurrentUserQueryQuery } from "./generated/graphql";
+import GoogleAuth from "./GoogleAuth";
 const App = () => {
   const { loading, error, data } = useCurrentUserQueryQuery();
   if (loading) return <div>Loading</div>;
@@ -28,6 +29,7 @@ const App = () => {
   return (
     <div>
       <SpotifyLogin />
+      <GoogleAuth />
       <PasswordSignUp />
       <LoginWithCredentials />
     </div>

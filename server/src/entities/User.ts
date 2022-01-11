@@ -26,7 +26,7 @@ export class User extends BaseEntity {
 
   @Column({ nullable: true, unique: true })
   @Field(() => String)
-  spotifyId: string;
+  oauthId: string;
 
   @Column({ nullable: true })
   @Field(() => String)

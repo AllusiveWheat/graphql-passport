@@ -6,9 +6,9 @@ import { buildSchema } from "type-graphql";
 const SESSION_SECRECT = process.env.SESSION_SECRECT || "bad secret";
 import passport from "passport";
 const SpotifyStrategy = require("passport-spotify").Strategy;
+const GoogleStrategy = require("passport-google-oauth20").Strategy;
 import dotenv from "dotenv-safe";
 import cors from "cors";
-import CustomGoogleStrategy from "passport-google-strategy";
 import { ApolloServer } from "apollo-server-express";
 import { buildContext, GraphQLLocalStrategy } from "graphql-passport";
 import "reflect-metadata";
@@ -63,6 +63,35 @@ async function load(): Promise<void> {
     context: ({ req, res }) => buildContext({ req, res, User }),
   });
   passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: "http://localhost:4000/auth/google/callback",
+        scope: ["profile", "email"],
+      },
+      async (accessToken, refreshToken, profile, done) => {
+        const user = await User.findOne({
+          where: {
+            oauthId: profile.id,
+          },
+        });
+        if (user) {
+          done(null, user);
+        } else {
+          const newUser = await User.create({
+            id: uuid(),
+            oauthId: profile.id,
+            firstName: profile.name.givenName,
+            lastName: profile.name.familyName,
+            email: profile.emails[0].value,
+          });
+          done(null, newUser);
+        }
+      }
+    )
+  );
+  passport.use(
     new SpotifyStrategy(
       {
         clientID: process.env.SPOTIFY_CLIENT_ID,
@@ -74,7 +103,7 @@ async function load(): Promise<void> {
         const existingUsers = await User.find();
 
         const existingUser = existingUsers.find(
-          (user) => user.spotifyId === profile.id
+          (user) => user.oauthId === profile.id
         );
         if (existingUser) {
           existingUser.accessToken = accessToken;
@@ -83,7 +112,7 @@ async function load(): Promise<void> {
           return done(null, existingUser);
         } else {
           const newUser = new User();
-          newUser.spotifyId = profile.id;
+          newUser.oauthId = profile.id;
           newUser.accessToken = accessToken;
           newUser.refreshToken = refreshToken;
           newUser.firstName = profile.displayName;

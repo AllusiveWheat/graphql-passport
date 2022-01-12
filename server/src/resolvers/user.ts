@@ -33,10 +33,42 @@ export class UserResolver {
       throw new Error("Invalid password");
     }
     req.session.userId = user.id;
+
     // console.log(res.body);
     return user;
   }
-
+  @Mutation(() => User)
+  async oauthLogin(
+    @Arg("email") email: string,
+    @Arg("oauthId") oauthId: string,
+    @Arg("accessToken") accessToken: string,
+    @Arg("refreshToken") refreshToken: string,
+    @Ctx() { req, res }: any
+  ) {
+    let user;
+    try {
+      user = await User.findOne({ where: { oauthId: oauthId } });
+    } catch (err) {
+      throw err;
+    }
+    if (!user) {
+      user = new User();
+      user.id = uuid();
+      user.oauthId = oauthId;
+      user.accessToken = accessToken;
+      user.refreshToken = refreshToken;
+      user.firstName = email;
+      user.lastName = email;
+      user.email = email;
+      try {
+        await user.save();
+      } catch (err) {
+        throw err;
+      }
+    }
+    req.session.userId = user.id;
+    return user;
+  }
   @Mutation(() => Boolean)
   async logout(@Ctx() { req, res }: any) {
     return new Promise((resolve) =>

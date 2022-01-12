@@ -12,10 +12,13 @@ import cors from "cors";
 import { ApolloServer } from "apollo-server-express";
 import { buildContext, GraphQLLocalStrategy } from "graphql-passport";
 import "reflect-metadata";
-import { createConnection } from "typeorm";
+import Redis from "ioredis";
+import connctRedis from "connect-redis";
+import { createConnection, Db, getRepository } from "typeorm";
 import { User } from "./entities/User";
 dotenv.config({ allowEmptyValues: true });
 import { UserResolver } from "./resolvers/user";
+import { TypeormStore } from "connect-typeorm/out";
 async function load(): Promise<void> {
   const connection = await createConnection({
     type: "postgres",
@@ -27,6 +30,8 @@ async function load(): Promise<void> {
     entities: [User],
   });
 
+  const redis = new Redis();
+  const RedisStore = connctRedis(session);
   passport.serializeUser((user, done) => {
     done(null, user.id);
   });
@@ -39,18 +44,24 @@ async function load(): Promise<void> {
     origin: "*",
     credentials: true,
   };
+
   app.use(cors(corsOptions));
   app.use(
     session({
-      name: "qid",
-      secret: SESSION_SECRECT,
+      name: process.env.SESSION_NAME || "spotify",
+      store: new RedisStore({
+        client: redis,
+        disableTouch: true,
+      }),
       cookie: {
-        maxAge: 1000 * 60 * 60 * 24 * 7,
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 years
+        httpOnly: false,
+        //sameSite: "lax", // csrf
+        secure: false, // cookie only works in https
       },
+      saveUninitialized: true,
+      secret: "qowiueojwojfalksdjoqiwueo",
       resave: false,
-      saveUninitialized: false,
     })
   );
   app.use(passport.initialize());
@@ -59,8 +70,21 @@ async function load(): Promise<void> {
     schema: await buildSchema({
       resolvers: [UserResolver],
     }),
-    context: ({ req, res }) => buildContext({ req, res, User }),
+    context: ({ req, res }: any) => {
+      req.session.userId = req.session.userId || "";
+      console.log(req.session.userId);
+      // set the userId on the context
+      return buildContext({
+        req,
+        res,
+        userId: req.session.userId,
+        redis,
+        session: req.session,
+        passport,
+      });
+    },
   });
+
   passport.use(
     new GoogleStrategy(
       {
@@ -106,26 +130,25 @@ async function load(): Promise<void> {
       },
       async (accessToken, refreshToken, profile, done) => {
         const existingUsers = await User.find();
-
         const existingUser = existingUsers.find(
           (user) => user.oauthId === profile.id
         );
-
         if (existingUser) {
           existingUser.accessToken = accessToken;
           existingUser.refreshToken = refreshToken;
+          existingUser.password = accessToken;
           await existingUser.save();
-          return done(null, existingUser);
+          done(null, existingUser);
         } else {
           const newUser = new User();
           newUser.oauthId = profile.id;
+          newUser.password = accessToken;
           newUser.accessToken = accessToken;
           newUser.refreshToken = refreshToken;
           newUser.firstName = profile.displayName;
           newUser.lastName = profile.displayName;
           newUser.email = profile.emails[0].value;
           await newUser.save();
-          // Set the user in the session
           done(null, newUser);
         }
       }
@@ -154,6 +177,8 @@ async function load(): Promise<void> {
     passport.authenticate("spotify", {
       successRedirect: "http://localhost:3000",
       failureRedirect: "http://localhost:4000/graphql",
+      passReqToCallback: true,
+      session: true,
     })
   );
 

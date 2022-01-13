@@ -21,7 +21,7 @@ export class UserResolver {
     let user;
     try {
       user = await User.findOne({ where: { email: email } });
-      console.log(user);
+      // console.log(user);
     } catch (err) {
       throw err;
     }
@@ -33,7 +33,6 @@ export class UserResolver {
       throw new Error("Invalid password");
     }
     req.session.userId = user.id;
-
     // console.log(res.body);
     return user;
   }
@@ -62,18 +61,21 @@ export class UserResolver {
       user.email = email;
       try {
         await user.save();
+        req.session.userId = user.id;
+        console.log(req.session.userId);
       } catch (err) {
         throw err;
       }
     }
-    req.session.userId = user.id;
+
     return user;
   }
   @Mutation(() => Boolean)
   async logout(@Ctx() { req, res }: any) {
+    console.log(req.session.id);
     return new Promise((resolve) =>
       req.session!.destroy((err) => {
-        res.clearCookie("qid");
+        res.clearCookie(process.env.SESSION_NAME || "qid");
         if (err) {
           console.log(err);
           resolve(false);
@@ -86,9 +88,14 @@ export class UserResolver {
   @Query(() => User, { nullable: true })
   currentUser(@Ctx() { req }: any) {
     if (!req.session.userId) {
+      console.log(req.session.userId);
+      console.log(req.session);
       return null;
     }
-    return User.findOne(req.session.userId);
+    console.log(req.session.userId);
+    console.log(req.session);
+
+    return User.find({ where: { id: req.session.userId } });
   }
 
   @Mutation(() => User)
@@ -97,7 +104,7 @@ export class UserResolver {
     @Arg("lastName") lastName: string,
     @Arg("email") email: string,
     @Arg("password") password: string,
-    @Ctx() { req }: any
+    @Ctx() { req, res }: any
   ) {
     let user;
     try {

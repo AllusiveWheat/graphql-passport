@@ -8,6 +8,7 @@ import passport from "passport";
 const SpotifyStrategy = require("passport-spotify").Strategy;
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 import dotenv from "dotenv-safe";
+import fs from "fs";
 import cors from "cors";
 import { ApolloServer } from "apollo-server-express";
 import { buildContext, GraphQLLocalStrategy } from "graphql-passport";
@@ -16,9 +17,12 @@ import Redis from "ioredis";
 import connctRedis from "connect-redis";
 import { createConnection, Db, getRepository } from "typeorm";
 import { User } from "./entities/User";
+import https from "https";
+
 dotenv.config({ allowEmptyValues: true });
 import { UserResolver } from "./resolvers/user";
 import { TypeormStore } from "connect-typeorm/out";
+import path from "path";
 async function load(): Promise<void> {
   const connection = await createConnection({
     type: "postgres",
@@ -29,9 +33,18 @@ async function load(): Promise<void> {
     synchronize: true,
     entities: [User],
   });
-
   const redis = new Redis();
   const RedisStore = connctRedis(session);
+  redis.on("error", (err) => {
+    console.log("Redis error: ", err);
+  });
+  redis.on("connect", () => {
+    console.log("Redis connected");
+  });
+  redis.on("ready", () => {
+    console.log("Redis ready");
+  });
+
   passport.serializeUser((user, done) => {
     done(null, user.id);
   });
@@ -45,23 +58,36 @@ async function load(): Promise<void> {
     credentials: true,
   };
 
-  app.use(cors(corsOptions));
+  const { Client } = require("pg");
+  const conObject = {
+    user: process.env.DB_USER || "postgres",
+    host: process.env.DB_HOST || "localhost",
+    database: process.env.DATABASE || "spotify",
+    password: process.env.PASSWORD || "1",
+    port: 5432,
+  };
+
+  const client = new Client(conObject);
+  client.connect();
+
+  // session store and session config
+  const store2 = new (require("connect-pg-simple")(session))({
+    conObject,
+  });
+  const store = new RedisStore({ client: redis });
+  //app.use(cors(corsOptions));
   app.use(
     session({
-      name: process.env.SESSION_NAME || "spotify",
-      store: new RedisStore({
-        client: redis,
-        disableTouch: true,
-      }),
+      name: process.env.SESSION_NAME || "qid",
+      store: store2,
       cookie: {
         maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 years
         httpOnly: false,
-        //sameSite: "lax", // csrf
-        secure: false, // cookie only works in https
+        secure: true, // cookie only works in https
       },
       saveUninitialized: true,
       secret: "qowiueojwojfalksdjoqiwueo",
-      resave: false,
+      resave: true,
     })
   );
   app.use(passport.initialize());
@@ -71,15 +97,13 @@ async function load(): Promise<void> {
       resolvers: [UserResolver],
     }),
     context: ({ req, res }: any) => {
-      req.session.userId = req.session.userId || "";
-      console.log(req.session.userId);
       // set the userId on the context
       return buildContext({
         req,
         res,
-        userId: req.session.userId,
         redis,
-        session: req.session,
+        User,
+        session: res.session,
         passport,
       });
     },
@@ -175,10 +199,9 @@ async function load(): Promise<void> {
   app.get(
     "/auth/spotify/callback",
     passport.authenticate("spotify", {
-      successRedirect: "http://localhost:3000",
+      successRedirect: "http://localhost:4000/graphql",
       failureRedirect: "http://localhost:4000/graphql",
       passReqToCallback: true,
-      session: true,
     })
   );
 
@@ -190,11 +213,18 @@ async function load(): Promise<void> {
       failureRedirect: "http://localhost:4000/graphql",
     })
   );
-
+  app.set("trust proxy", 1);
   await server.start();
-  server.applyMiddleware({ app, cors: false });
-  app.listen({ port: PORT }, () => {
-    console.log(`🚀 Server ready at http://localhost:${PORT}`);
+  server.applyMiddleware({
+    app,
+    cors: {
+      origin: ["https://studio.apollographql.com", "http://localhost:3000"],
+      credentials: true,
+    },
+  });
+  console.log(__dirname);
+  app.listen(PORT, () => {
+    console.log(`Server started on http://localhost:${PORT}/graphql`);
   });
 }
 load().catch((e) => console.error(e));
